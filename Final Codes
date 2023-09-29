@@ -1,0 +1,173 @@
+import re
+
+# Dictionary to store the unique hosts
+unique_hosts = {}
+
+# Regular expression pattern to match IP addresses and the keyword "UADI"
+pattern = r'(\d+\.\d+\.\d+\.\d+) .* "GET /UADI/.*'
+
+# Open the log file for reading
+with open('CSC1401_log.txt', 'r') as log_file:
+    # Loop through each line in the log file
+    for line in log_file:
+        # Try to match the pattern
+        match = re.match(pattern, line)
+        if match:
+            # Extract the IP address
+            ip_address = match.group(1)
+            # Add the IP address to the dictionary (only if not already added)
+            unique_hosts[ip_address] = True
+
+# Count the unique hosts
+num_unique_hosts = len(unique_hosts)
+
+# Print the total number of unique hosts
+print('Q1: There are', num_unique_hosts, 'IP visiting the /UADI')
+
+# Print the list of unique IP addresses
+print('List of unique IP addresses:')
+for ip in unique_hosts.keys():
+    print(ip, end=";\t")
+
+
+
+from collections import defaultdict
+from datetime import datetime
+
+# Create a dictionary to store information about each host
+host_data = defaultdict(list)
+
+# Open the log file and read it line by line
+with open('CSC1401_log.txt', 'r') as file:
+    for line in file:
+        # Split the line into fields using whitespace as a separator
+        fields = line.split()
+        
+        # Extract relevant information from the fields
+        ip = fields[0]
+        timestamp_str = fields[3][1:] + ' ' + fields[4][:-1]
+        timestamp = datetime.strptime(timestamp_str, '%d/%b/%Y:%H:%M:%S %z')
+        request = fields[5] + ' ' + fields[6]
+        
+        # Add the data to the host_data dictionary
+        host_data[ip].append((timestamp, request))
+
+# Analyze each host's access frequency
+for ip, data in host_data.items():
+    data.sort()  # Sort the data by timestamp
+    ip_visits = len(data)
+    earliest_time = data[0][0]
+    latest_time = data[-1][0]
+
+    # Display the summary analysis
+    print(f'IP: {ip}')
+    print(f'Number of Visits: {ip_visits}')
+    print(f'Earliest Time: {earliest_time}')
+    print(f'Latest Time: {latest_time}')
+    print('-' * 50)
+
+
+    print()
+
+
+
+
+
+import re
+from collections import defaultdict
+
+# Initialize dictionaries to store data
+ip_fail_codes = defaultdict(set)  # Use a set to store unique fail codes
+fail_access_times = defaultdict(int)
+total_visiting_times = defaultdict(int)
+
+# Regex pattern to extract relevant information from log lines
+log_pattern = r'(\d+\.\d+\.\d+\.\d+) .* \[(.*?)\] "(.*?)" (\d+)'
+
+# Read the log file
+with open('CSC1401_log.txt', 'r') as file:
+    for line in file:
+        match = re.match(log_pattern, line)
+        if match:
+            ip = match.group(1)
+            status_code = int(match.group(4))
+
+            if status_code >= 400:
+                # Store unique fail codes and count fail access times
+                ip_fail_codes[ip].add(status_code)
+                fail_access_times[ip] += 1
+
+            # Count total visiting times for each IP
+            total_visiting_times[ip] += 1
+
+# Display the results
+for ip in ip_fail_codes.keys():
+    print(f"IP: {ip}")
+    print(f"Fail Code(s): {', '.join(map(str, ip_fail_codes[ip]))}")
+    print(f"Fail Times: {fail_access_times[ip]}")
+    print(f"Total Visiting Times: {total_visiting_times[ip]}")
+    print()
+
+
+
+import re
+from datetime import datetime, timedelta
+from collections import defaultdict
+
+# Initialize dictionaries to store data
+ip_fail_count = defaultdict(int)
+ip_success_count = defaultdict(int)
+ip_requests = defaultdict(list)
+max_visiting_frequency_per_minute = defaultdict(int)
+
+# Regex pattern to extract relevant information from log lines
+log_pattern = r'(\d+\.\d+\.\d+\.\d+) .* \[(.*?)\] "(.*?)" (\d+)'
+
+# Read the log file (replace 'logfile.txt' with your log file)
+with open('CSC1401_log.txt', 'r') as file:
+    for line in file:
+        match = re.match(log_pattern, line)
+        if match:
+            ip = match.group(1)
+            timestamp_str = match.group(2)
+            request = match.group(3)
+            status_code = int(match.group(4))
+
+            # Parse the timestamp
+            timestamp = datetime.strptime(timestamp_str, '%d/%b/%Y:%H:%M:%S %z')
+
+            # Store the request information for each IP
+            ip_requests[ip].append((timestamp, status_code))
+
+# Analyze the log data
+for ip, requests in ip_requests.items():
+    requests.sort(key=lambda x: x[0])  # Sort requests by timestamp
+    consecutive_fails = 0
+    visiting_frequency_per_minute = defaultdict(int)  # Initialize per IP
+    start_time = requests[0][0]
+
+    for timestamp, status_code in requests:
+        if status_code == 200:
+            ip_success_count[ip] += 1
+        elif status_code == 404:
+            consecutive_fails += 1
+            # Calculate the minute interval
+            minute_interval = int((timestamp - start_time).total_seconds() / 60)
+
+            # Update the visiting frequency within the minute
+            visiting_frequency_per_minute[minute_interval] += 1
+
+    # Find the maximum visiting frequency within a minute
+    max_visiting_frequency_per_minute[ip] = max(visiting_frequency_per_minute.values(), default=0)
+
+    # Determine if the IP is abnormal based on conditions
+    if max_visiting_frequency_per_minute[ip] >= 4:
+        ip_fail_count[ip] = consecutive_fails
+
+# Display the results for abnormal IPs only
+for ip in ip_fail_count.keys():
+    print(f"IP: {ip}")
+    print(f"Fail Times: {ip_fail_count[ip]}")
+    print(f"Success Times: {ip_success_count[ip]}")
+    print(f"Max Visiting Times (minutes): {max_visiting_frequency_per_minute[ip]}")
+    print()
